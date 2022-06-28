@@ -1,0 +1,13 @@
+
+# You should ALWAYS set this one appropriatelly
+WEB3_PROVIDER_URI: "%%PROVIDER_URI%%"
+
+
+# You will likely wnat to set this for your contracts
+KNOWN_ROLES: GUARDIAN_ROLE,LEVEL1_ROLE,LEVEL2_ROLE,LEVEL3_ROLE,RESOLVER_ROLE,ORACLE_ADMIN_ROLE,PRICER_ROLE,RM_PROVIDER_ROLE,WITHDRAW_WON_PREMIUMS_ROLE,REBALANCE_ROLE,SWAP_REWARDS_ROLE,LP_WHITELIST_ROLE
+
+# You should never need to change these
+DEFAULT_PROVIDER: w3
+CONTRACT_JSON_PATH: ens_permissions/contracts
+
+

@@ -14,6 +14,7 @@ def build_graph(contract_type, contract_address):
     dot.node(
         "CONTRACT",
         URL=ExplorerAddress.get(contract_address),
+        target="_blank",
         style="filled",
         fillcolor="green",
         shape="hexagon",
@@ -31,6 +32,7 @@ def build_graph(contract_type, contract_address):
                 ellipsize(member),
                 tooltip=member,
                 URL=ExplorerAddress.get(member),
+                target="_blank",
                 style="filled",
                 shape="hexagon",
                 fontcolor="blue",
