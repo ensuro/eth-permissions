@@ -4,7 +4,7 @@ This project defines a simple app for obtaining smart contract permissions and b
 
 It's aimed at contracts using [Openzeppelin's AccessControl module](https://docs.openzeppelin.com/contracts/3.x/api/access#AccessControl).
 
-There's a frontend for this app at TODO
+There's a frontend for this app at https://ensuro.co/ens-permissions-frontend/
 
 # Development
 
