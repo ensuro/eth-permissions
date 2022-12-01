@@ -22,7 +22,7 @@ def build_graph(contract_type, contract_address):
     )
 
     for item in stream.snapshot:
-        identifier = graphviz.quoting.quote(item["role"].name)
+        graphviz.quoting.quote(item["role"].name)
         dot.node(item["role"].hash, item["role"].name, tooltip=item["role"].hash)
         dot.edge(item["role"].hash, "CONTRACT")
 

@@ -1,0 +1,7 @@
+pre-commit
+pip-tools
+pytest
+pytest-cov
+black
+isort
+functions-framework
