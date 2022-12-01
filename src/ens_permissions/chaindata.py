@@ -1,9 +1,10 @@
-from collections import defaultdict
 import itertools
-from environs import Env
+import pathlib
+from collections import defaultdict
 
+from environs import Env
+from ethproto.wrappers import ETHWrapper, get_provider
 from web3 import Web3
-from ethproto.wrappers import get_provider, ETHWrapper
 
 from .utils import ellipsize
 
@@ -19,6 +20,8 @@ DEFAULT_ADMIN_ROLE_HASH = "0x" + "0" * 64
 ROLES_TABLE = {Web3.keccak(text=role).hex(): role for role in KNOWN_ROLES}
 ROLES_TABLE[DEFAULT_ADMIN_ROLE_HASH] = "DEFAULT_ADMIN_ROLE"
 
+CONTRACTS_PATH = pathlib.Path(__file__).parent / "contracts"
+
 
 class EventStream:
     def __init__(self, contract_type, contract_address):
@@ -28,6 +31,9 @@ class EventStream:
 
     def _load_stream(self):
         w3 = get_provider()
+
+        if CONTRACTS_PATH not in w3.contracts_path:
+            w3.contracts_path.append(CONTRACTS_PATH)
 
         contract_factory = w3.get_contract_factory(self.contract_type)
         contract = w3.build_contract(

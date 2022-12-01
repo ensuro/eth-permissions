@@ -1,6 +1,10 @@
 import functions_framework
+from environs import Env
 
 from ens_permissions.graph import build_graph
+
+env = Env()
+env.read_env()
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
