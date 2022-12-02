@@ -92,22 +92,6 @@ class Registry:
         return self._map.get(hash, Role.from_hash(hash))
 
 
-# def get_known_roles(known_role_names, known_components=None) -> list:
-#     known_roles = [Role(name) for name in known_role_names]
-#     known_roles.append(Role.default_admin())
-
-#     if known_components:
-#         for name in known_role_names:
-#             known_roles += [Role(name, component=component) for component in known_components]
-
-#     return known_roles
-
-
-# def get_known_roles_map(known_role_names, known_components=None) -> dict:
-#     known_roles = get_known_roles(known_role_names, known_components)
-#     return {role.hash: role for role in known_roles}
-
-
 _registry = None
 
 
