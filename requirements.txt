@@ -29,9 +29,7 @@ cytoolz==0.12.0
     #   eth-keyfile
     #   eth-utils
 environs==9.5.0
-    # via
-    #   -r requirements.in
-    #   eth-prototype
+    # via eth-prototype
 eth-abi==2.2.0
     # via
     #   eth-account
@@ -53,7 +51,7 @@ eth-keys==0.3.4
     #   eth-account
     #   eth-keyfile
 eth-prototype[web3]==0.7.2
-    # via -r requirements.in
+    # via ens-permissions (setup.py)
 eth-rlp==0.2.1
     # via
     #   eth-account
@@ -83,7 +81,7 @@ future==0.18.2
 future-fstrings==1.2.0
     # via m9g
 graphviz==0.20.1
-    # via -r requirements.in
+    # via ens-permissions (setup.py)
 hexbytes==0.3.0
     # via
     #   eth-account
@@ -108,7 +106,7 @@ marshmallow==3.19.0
     # via environs
 multiaddr==0.0.9
     # via ipfshttpclient
-multidict==6.0.2
+multidict==6.0.3
     # via
     #   aiohttp
     #   yarl
@@ -151,11 +149,11 @@ urllib3==1.26.13
     # via requests
 varint==1.0.2
     # via multiaddr
-web3==5.31.1
+web3==5.31.3
     # via eth-prototype
 websockets==9.1
     # via web3
-yarl==1.8.1
+yarl==1.8.2
     # via aiohttp
 zipp==3.11.0
     # via importlib-resources

@@ -10,24 +10,26 @@ CONTRACTS_PATH = pathlib.Path(__file__).parent / "contracts"
 
 
 class EventStream:
-    def __init__(self, contract_type, contract_address):
+    def __init__(self, contract_type, contract_address, provider=None):
         self.contract_type = contract_type
         self.contract_address = contract_address
         self._event_stream = None
 
+        if provider is None:
+            provider = get_provider()
+        self.provider = provider
+
     def _load_stream(self):
-        w3 = get_provider()
+        if CONTRACTS_PATH not in self.provider.contracts_path:
+            self.provider.contracts_path.append(CONTRACTS_PATH)
 
-        if CONTRACTS_PATH not in w3.contracts_path:
-            w3.contracts_path.append(CONTRACTS_PATH)
-
-        contract_factory = w3.get_contract_factory(self.contract_type)
-        contract = w3.build_contract(self.contract_address, contract_factory, self.contract_type)
+        contract_factory = self.provider.get_contract_factory(self.contract_type)
+        contract = self.provider.build_contract(self.contract_address, contract_factory, self.contract_type)
         contract_wrapper = ETHWrapper.connect(contract)
 
-        roles_granted = w3.get_events(contract_wrapper, "RoleGranted")
-        roles_revoked = w3.get_events(contract_wrapper, "RoleRevoked")
-        # TODO: admin_changes = w3.get_events(contract_wrapper, "RoleAdminChanged")
+        roles_granted = self.provider.get_events(contract_wrapper, "RoleGranted")
+        roles_revoked = self.provider.get_events(contract_wrapper, "RoleRevoked")
+        # TODO: admin_changes = self.provider.get_events(contract_wrapper, "RoleAdminChanged")
 
         event_stream = []
         for event in roles_granted + roles_revoked:

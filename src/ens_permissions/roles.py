@@ -17,6 +17,9 @@ class Component:
             return self.name
         return f"Component<{ellipsize(self.address.hex())}>"
 
+    def to_json(self):
+        return {"address": self.address.hex(), "name": self.name}
+
 
 class Role:
     def __init__(self, name, component: Component = None):
@@ -54,6 +57,13 @@ class Role:
                 )
         return self._hash
 
+    def to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "hash": self.hash.hex(),
+            "component": self.component.to_json() if self.component else None,
+        }
+
     def __str__(self):
         ret = f"Role:{self.name}"
         if self.component:
@@ -67,6 +77,9 @@ class Role:
         if not isinstance(__o, Role):
             return False
         return self.hash == __o.hash
+
+    def __hash__(self):
+        return hash(self.hash)
 
 
 class Registry:
