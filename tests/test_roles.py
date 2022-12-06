@@ -1,6 +1,6 @@
 from hexbytes import HexBytes
 
-from ens_permissions.roles import Component, Role, get_registry
+from eth_permissions.roles import Component, Role, get_registry
 
 
 def test_simple_role_hash():
