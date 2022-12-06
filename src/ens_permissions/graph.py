@@ -8,7 +8,7 @@ def build_graph(contract_type, contract_address):
     stream = EventStream(contract_type, contract_address)
 
     dot = graphviz.Digraph("Permissions")
-    dot.attr(rankdir="RL")
+    dot.attr(rankdir="RL", splines="ortho")
     dot.attr("node", style="rounded", shape="box")
 
     dot.node(
@@ -22,9 +22,9 @@ def build_graph(contract_type, contract_address):
     )
 
     for item in stream.snapshot:
-        graphviz.quoting.quote(item["role"].name)
-        dot.node(item["role"].hash, item["role"].name, tooltip=item["role"].hash)
-        dot.edge(item["role"].hash, "CONTRACT")
+        graphviz.quoting.quote(str(item["role"]))
+        dot.node(item["role"].hash.hex(), str(item["role"]), tooltip=item["role"].hash.hex())
+        dot.edge(item["role"].hash.hex(), "CONTRACT")
 
         for member in item["members"]:
             dot.node(
@@ -37,6 +37,6 @@ def build_graph(contract_type, contract_address):
                 shape="hexagon",
                 fontcolor="blue",
             )
-            dot.edge(member, item["role"].hash)
+            dot.edge(member, item["role"].hash.hex())
 
     return dot

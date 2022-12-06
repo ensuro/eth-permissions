@@ -38,7 +38,7 @@ functions_framework --debug --target=permissions_graph
 Then test it with:
 
 ```
-curl -o test.gv http://127.0.0.1:8080/?address=0xF7ED72430bEA07D8dB6eC264603811381F5af8e0
+curl -o test.gv http://127.0.0.1:8080/?address=0x47E2aFB074487682Db5Db6c7e41B43f913026544
 
 dot -Tsvg test.gv > test.svg
 ```
