@@ -16,7 +16,7 @@ pip install eth-permissions
 
 # Usage
 
-We use [eth-prototype]()'s wrappers for accessing the blockchain information. The simplest way to use it is to export the following environment variables:
+We use [eth-prototype](https://pypi.org/project/eth-prototype/)'s wrappers for accessing the blockchain information. The simplest way to use it is to export the following environment variables:
 
 ```sh
 export DEFAULT_PROVIDER=w3
