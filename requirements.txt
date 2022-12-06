@@ -51,7 +51,7 @@ eth-keys==0.3.4
     #   eth-account
     #   eth-keyfile
 eth-prototype[web3]==0.7.2
-    # via ens-permissions (setup.py)
+    # via eth-permissions (setup.py)
 eth-rlp==0.2.1
     # via
     #   eth-account
@@ -81,7 +81,7 @@ future==0.18.2
 future-fstrings==1.2.0
     # via m9g
 graphviz==0.20.1
-    # via ens-permissions (setup.py)
+    # via eth-permissions (setup.py)
 hexbytes==0.3.0
     # via
     #   eth-account
