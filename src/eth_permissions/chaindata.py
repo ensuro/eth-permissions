@@ -60,6 +60,8 @@ class EventStream:
                 elif event["event"] == "RoleRevoked":
                     try:
                         snapshot[role].remove(event["subject"])
+                        if not snapshot[role]:
+                            snapshot.pop(role)
                     except KeyError:
                         raise RuntimeError(
                             f"WARNING: can't remove ungranted role {role} from {event['subject']}"
