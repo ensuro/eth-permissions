@@ -13,7 +13,7 @@ To run the function locally you will need a virtualenv with `functions-framework
 ```
 python3 -m venv venv
 . venv/bin/activate
-pip install -r requirements.txt -r requirements.dev.txt
+pip install -r requirements-dev.txt
 pip install -e .
 ```
 
@@ -42,7 +42,15 @@ dot -Tsvg test.gv > test.svg
 Edit `config/environment.yml` with your config and then deploy with gcloud:
 
 ```
+cd app
 gcloud functions deploy permissions_graph \
-    --env-vars-file config/environment.yml \
+    --env-vars-file environment.yml \
     --runtime python39 --trigger-http --allow-unauthenticated
+```
+
+Then test the deployed function with the URL that the gcloud CLI outputs:
+
+```
+URL=
+curl "$URL"  | dot -Tsvg > test.svg
 ```

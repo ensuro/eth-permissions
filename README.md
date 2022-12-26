@@ -14,7 +14,7 @@ Simply install with `pip` or your preferred package manager:
 pip install eth-permissions
 ```
 
-# Usage
+# Usage as a library
 
 We use [eth-prototype](https://pypi.org/project/eth-prototype/)'s wrappers for accessing the blockchain information. The simplest way to use it is to export the following environment variables:
 
@@ -25,31 +25,7 @@ export DEFAULT_PROVIDER=w3
 export WEB3_PROVIDER_URI=https://polygon-mainnet.g.alchemy.com/v2/<YOUR KEY>
 ```
 
-With that set, getting the permissions graph is very simple:
-
-```python
-from eth_permissions.roles import get_registry, Role
-from eth_permissions.graph import build_graph
-
-# Optionally register any known roles
-known_roles = ["GUARDIAN_ROLE", "LEVEL1_ROLE", "LEVEL2_ROLE", "LEVEL3_ROLE"]
-roles_registry = get_registry()
-roles_registry.add_roles([Role(name) for name in known_roles])
-
-# Build the graph
-contract_address = "0x47E2aFB074487682Db5Db6c7e41B43f913026544"
-
-g = build_graph("IAccessControl", contract_address)
-g.render("my_permissions.gv", format="svg")
-```
-
-This will save the graphviz file in `my_permissions.gv` and render it in `my_permissions.gv.svg`. The svg format was chosen for this example because it supports tooltips.
-
-## Getting the permissions snapshot for programmatic use
-
-In some cases you may want just the permissions in a consistent datastructure to use from your code.
-
-Export the eth node environment variables as above and use the `chaindata` module to get the full permissions detail:
+Use the `chaindata` module to get the full permissions detail:
 
 ```python
 from eth_permissions.chaindata import EventStream
@@ -69,11 +45,38 @@ stream.snapshot
 # ]
 ```
 
-As well as in the previous example, you can register your roles to get the actual names in the result.
+You can register your roles to get the actual names in the result. See [main.py](src/eth_permissions/main.py) for an example of how to do that.
+
+# Usage as a command line tool
+
+First set up some env vars:
+
+```
+# Env vars for eth-prototype
+export DEFAULT_PROVIDER=w3
+export WEB3_PROVIDER_URI=https://polygon-mainnet.g.alchemy.com/v2/<YOUR KEY>
+
+# Values for ensuro v2 on mainnet as of dec 2023, change accordingly for other contracts
+export KNOWN_ROLES=GUARDIAN_ROLE,LEVEL1_ROLE,LEVEL2_ROLE,LEVEL3_ROLE,RESOLVER_ROLE,POLICY_CREATOR_ROLE,PRICER_ROLE,...
+export KNOWN_COMPONENTS=0xa65c9dE776d1f30c095EFF9C775E001a1d366df8,0x37fE456EFF897CB5dDF040A5e95f399EaBc162ca
+export KNOWN_COMPONENT_NAMES="KoalaV2,Koala Partner B"
+```
+
+Then run `eth-permissions`:
+
+```
+python -m eth_permissions --view --output test.png 0x47E2aFB074487682Db5Db6c7e41B43f913026544
+```
+
+This will create the file `test.png` and open it with the default viewer. It will look like this:
+
+![](images/ensuro_mainnet_graph.png)
+
+Run `python -m eth_permissions --help` to see all available flags and options.
 
 # App
 
-Check [docs/App](docs/App.md) for a simple app that exposes this API over http for use on a frontend app.
+Check [app/Readme](app/README.md) for a simple app that exposes this API over http for use on a frontend app.
 
 # TODO
 
