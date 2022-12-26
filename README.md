@@ -8,7 +8,9 @@ It's aimed at contracts using [Openzeppelin's AccessControl module](https://docs
 
 # Installation
 
-Simply install with `pip` or your preferred package manager:
+You'll need to have [graphviz](https://graphviz.org/) installed: `apt-get install graphviz`.
+
+Then simply install with `pip` or your preferred package manager:
 
 ```
 pip install eth-permissions
