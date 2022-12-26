@@ -10,7 +10,7 @@ There's a frontend for this app at https://ensuro.co/ens-permissions-frontend/
 
 To run the function locally you will need a virtualenv with `functions-framework` and the app requirements:
 
-```
+```sh
 python3 -m venv venv
 . venv/bin/activate
 pip install -r requirements-dev.txt
@@ -19,7 +19,7 @@ pip install -e .
 
 It also requires a few environment variables. See [.env.sample](.env.sample).
 
-```
+```sh
 cp .env.sample .env
 
 # Review .env vars
@@ -31,7 +31,7 @@ functions_framework --debug --target=permissions_graph
 
 Then test it with:
 
-```
+```sg
 curl -o test.gv http://127.0.0.1:8080/?address=0x47E2aFB074487682Db5Db6c7e41B43f913026544
 
 dot -Tsvg test.gv > test.svg
@@ -41,7 +41,7 @@ dot -Tsvg test.gv > test.svg
 
 Edit `config/environment.yml` with your config and then deploy with gcloud:
 
-```
+```sh
 cd app
 gcloud functions deploy permissions_graph \
     --env-vars-file environment.yml \
@@ -50,7 +50,7 @@ gcloud functions deploy permissions_graph \
 
 Then test the deployed function with the URL that the gcloud CLI outputs:
 
-```
-URL=
-curl "$URL"  | dot -Tsvg > test.svg
+```sh
+URL=https://us-central1-solid-range-319205.cloudfunctions.net/permissions_graph
+curl "$URL?address=0x47E2aFB074487682Db5Db6c7e41B43f913026544"  | dot -Tsvg > test.svg
 ```
