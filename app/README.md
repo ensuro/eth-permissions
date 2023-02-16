@@ -39,7 +39,7 @@ dot -Tsvg test.gv > test.svg
 
 # Deployment
 
-Edit `config/environment.yml` with your config and then deploy with gcloud:
+Edit `app/environment.yml` with your config and then deploy with gcloud:
 
 ```sh
 cd app
