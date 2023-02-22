@@ -4,10 +4,13 @@ from itertools import zip_longest
 from environs import Env
 from hexbytes import HexBytes
 
-from eth_permissions.graph import build_graph
-from eth_permissions.roles import Component, Role, get_registry
-
 env = Env()
+env.read_env()
+
+# Importing these after loading .env so it picks up the right settings
+from eth_permissions.graph import build_graph  # noqa: E402
+from eth_permissions.roles import Component, Role, get_registry  # noqa: E402
+
 KNOWN_ROLES = env.list("KNOWN_ROLES", ["GUARDIAN_ROLE", "LEVEL1_ROLE", "LEVEL2_ROLE", "LEVEL3_ROLE"])
 KNOWN_COMPONENTS = env.list("KNOWN_COMPONENTS", [])
 KNOWN_COMPONENT_NAMES = env.list("KNOWN_COMPONENT_NAMES", [])
