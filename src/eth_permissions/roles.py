@@ -34,6 +34,17 @@ class Role:
         return ret
 
     @classmethod
+    def component_role_from_role(cls, hash: HexBytes, role):
+        role_xor_addr = hash.hex()[:-24]
+        base_hash = role.hash.hex()[:-24]
+        component_address = int(role_xor_addr, 16) ^ int(base_hash, 16)
+        component_address = HexBytes(hex(component_address))
+
+        ret = cls(name=role.name, component=Component(address=component_address))
+        ret._role_hash = role.hash
+        return ret
+
+    @classmethod
     def default_admin(cls):
         ret = cls("DEFAULT_ADMIN_ROLE")
         ret._role_hash = HexBytes("0x" + "0" * 64)
@@ -71,7 +82,10 @@ class Role:
         return ret
 
     def __repr__(self):
-        return f"Role('{self.name}')"
+        ret = f"Role('{self.name}')"
+        if self.component:
+            ret += f"@{self.component}"
+        return ret
 
     def __eq__(self, __o: object) -> bool:
         if not isinstance(__o, Role):
@@ -98,11 +112,28 @@ class Registry:
 
     def add(self, role):
         self._map[role.hash] = role
+        if role.component and role._role_hash not in self._map:
+            base_role = Role(role.name)
+            base_role._role_hash = role._role_hash
+            self._map[role._role_hash] = base_role
 
     def get(self, hash):
         if isinstance(hash, str):
             hash = HexBytes(hash)
-        return self._map.get(hash, Role.from_hash(hash))
+        if hash in self._map:
+            return self._map[hash]
+        # Try to match the last part of the hash
+        hash_tail = hash.hex()[-24:]
+        base_role = next(
+            (r for h, r in self._map.items()
+             if h.hex()[-24:] == hash_tail and r.component is None),
+            None
+        )
+        if base_role:
+            # It's a component role of an unknown component
+            return Role.component_role_from_role(hash, base_role)
+        else:
+            return Role.from_hash(hash)
 
 
 _registry = None
