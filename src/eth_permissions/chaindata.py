@@ -20,8 +20,8 @@ class EventStream:
         self.provider = provider
 
     def _load_stream(self):
-        if CONTRACTS_PATH not in self.provider.contracts_path:
-            self.provider.contracts_path.append(CONTRACTS_PATH)
+        if CONTRACTS_PATH not in self.provider.artifact_library.lookup_paths:
+            self.provider.artifact_library.lookup_paths.append(CONTRACTS_PATH)
 
         contract_factory = self.provider.get_contract_factory(self.contract_type)
         contract = self.provider.build_contract(self.contract_address, contract_factory, self.contract_type)

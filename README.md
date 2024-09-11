@@ -4,7 +4,7 @@
 
 This project defines a simple library for obtaining smart contract permissions and building a graph.
 
-It's aimed at contracts using [Openzeppelin's AccessControl module](https://docs.openzeppelin.com/contracts/3.x/api/access#AccessControl).
+It's aimed at contracts using [Openzeppelin's AccessControl module](https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl).
 
 # Installation
 
