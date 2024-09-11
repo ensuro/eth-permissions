@@ -3,6 +3,7 @@ from itertools import zip_longest
 
 from hexbytes import HexBytes
 from web3 import Web3
+from eth_utils import add_0x_prefix
 
 from .utils import ellipsize
 
@@ -15,21 +16,21 @@ class Component:
     def __str__(self):
         if self.name:
             return self.name
-        return f"Component<{ellipsize(self.address.hex())}>"
+        return f"Component<{ellipsize(add_0x_prefix(self.address.hex()))}>"
 
     def to_json(self):
-        return {"address": self.address.hex(), "name": self.name}
+        return {"address": add_0x_prefix(self.address.hex()), "name": self.name}
 
 
 class Role:
     def __init__(self, name, component: Component = None):
         self.name = name
         self.component = component
-        self._role_hash = HexBytes(Web3.keccak(text=name).hex())
+        self._role_hash = HexBytes(Web3.keccak(text=name))
 
     @classmethod
     def from_hash(cls, hash: HexBytes, component: Component = None):
-        ret = cls(name=f"UNKNOWN ROLE: {ellipsize(hash.hex())}", component=component)
+        ret = cls(name=f"UNKNOWN ROLE: {ellipsize(add_0x_prefix(hash.hex()))}", component=component)
         ret._role_hash = hash
         return ret
 
@@ -71,7 +72,7 @@ class Role:
     def to_json(self) -> dict:
         return {
             "name": self.name,
-            "hash": self.hash.hex(),
+            "hash": add_0x_prefix(self.hash.hex()),
             "component": self.component.to_json() if self.component else None,
         }
 
