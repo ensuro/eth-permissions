@@ -37,5 +37,5 @@ def permissions_graph(request):
     except KeyError:
         return {"error": "address is required"}, 400
 
-    graph = build_graph("IAccessControl", address)
+    graph = build_graph(address)
     return (graph.source, 200, CORS_HEADERS)
