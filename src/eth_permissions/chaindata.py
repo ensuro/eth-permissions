@@ -26,9 +26,9 @@ class BaseEventStream:
         contract = self.provider.w3.eth.contract(address=self.contract_address, abi=self.ABI)
         return ETHWrapper.connect(contract)
 
-    def _get_events(self, event_name):
+    def _get_events(self, event_names):
         contract_wrapper = self._get_contract_wrapper()
-        return self.provider.get_events(contract_wrapper, event_name)
+        return self.provider.get_events(contract_wrapper, event_names)
 
     @property
     def stream(self):
@@ -41,12 +41,10 @@ class AccessControlEventStream(BaseEventStream):
     ABI = abis.OZ_ACCESS_CONTROL
 
     def _load_stream(self):
-        roles_granted = self._get_events("RoleGranted")
-        roles_revoked = self._get_events("RoleRevoked")
-        # TODO: admin_changes = self.provider.get_events(contract_wrapper, "RoleAdminChanged")
+        events = self._get_events(["RoleGranted", "RoleRevoked", "RoleAdminChanged"])
 
         event_stream = []
-        for event in roles_granted + roles_revoked:
+        for event in events:
             event_stream.append(
                 {
                     "role": get_registry().get("0x" + event.args.role.hex()),
@@ -126,14 +124,26 @@ class AMRole:
 
 @dataclass
 class AMOperation:
+    # labelRole(uint64 roleId, string calldata label)
+    # grantRole(uint64 roleId, address account, uint32 executionDelay)
+    # revokeRole(uint64 roleId, address account)
+    # setRoleAdmin(uint64 roleId, uint64 admin)
+    # setRoleGuardian(uint64 roleId, uint64 guardian)
+    # setGrantDelay(uint64 roleId, uint32 newDelay)
+    # setTargetFunctionRole(address target, bytes4[] calldata selectors, uint64 roleId)
     op: Literal[
-        "grant_role", "revoke_role", "change_guardian", "change_admin", "change_label", "update_target"
+        "grantRole",
+        "revokeRole",
+        "setRoleGuardian",
+        "setRoleAdmin",
+        "labelRole",
+        "setTargetFunctionRole",
+        "setGrantDelay",
     ]
-    role: AMRole
     args: dict
 
     def as_dict(self):
-        return {"op": self.op, "role": self.role.id, "args": self.args}
+        return {"op": self.op, "args": self.args}
 
 
 class AccessManagerEventStream(BaseEventStream):
@@ -143,12 +153,16 @@ class AccessManagerEventStream(BaseEventStream):
     PUBLIC_ROLE = AMRole("PUBLIC_ROLE", id=2**64 - 1, guardian=0, admin=0)
 
     def _load_stream(self):
-        roles_granted = self._get_events("RoleGranted")
-        roles_revoked = self._get_events("RoleRevoked")
-        guardian_changes = self._get_events("RoleGuardianChanged")
-        admin_changes = self._get_events("RoleAdminChanged")
-        labels = self._get_events("RoleLabel")
-        targets = self._get_events("TargetFunctionRoleUpdated")
+        events = self._get_events(
+            [
+                "RoleGranted",
+                "RoleRevoked",
+                "RoleGuardianChanged",
+                "RoleAdminChanged",
+                "RoleLabel",
+                "TargetFunctionRoleUpdated",
+            ]
+        )
 
         event_stream = [
             {
@@ -156,7 +170,7 @@ class AccessManagerEventStream(BaseEventStream):
                 "args": e.args,
                 "order": (e.blockNumber, e.logIndex),
             }
-            for e in roles_granted + roles_revoked + guardian_changes + admin_changes + labels + targets
+            for e in events
         ]
 
         self._event_stream = sorted(event_stream, key=lambda e: e["order"])
@@ -233,25 +247,36 @@ class AccessManagerEventStream(BaseEventStream):
             )
 
             if current_role.label != snapshot_role.label:
-                differences.append(AMOperation("change_label", current_role, {"label": snapshot_role.label}))
+                differences.append(
+                    AMOperation("labelRole", {"roleId": current_role.id, "label": snapshot_role.label})
+                )
             if current_role.admin != snapshot_role.admin:
-                differences.append(AMOperation("change_admin", current_role, {"admin": snapshot_role.admin}))
+                differences.append(
+                    AMOperation("setRoleAdmin", {"roleId": current_role.id, "admin": snapshot_role.admin})
+                )
             if current_role.guardian != snapshot_role.guardian:
                 differences.append(
-                    AMOperation("change_guardian", current_role, {"guardian": snapshot_role.guardian})
+                    AMOperation(
+                        "setRoleGuardian", {"roleId": current_role.id, "guardian": snapshot_role.guardian}
+                    )
                 )
             if current_role.members != snapshot_role.members:
                 for member in current_role.members - snapshot_role.members:
-                    differences.append(AMOperation("revoke_role", current_role, {"account": member}))
+                    differences.append(
+                        AMOperation("revokeRole", {"roleId": current_role.id, "account": member})
+                    )
                 for member in snapshot_role.members - current_role.members:
-                    differences.append(AMOperation("grant_role", current_role, {"account": member}))
+                    differences.append(
+                        AMOperation("grantRole", {"roleId": current_role.id, "account": member})
+                    )
 
             for target, selectors in current_role.targets.items():
                 if target not in snapshot_role.targets:
                     # By default every target function is restricted to the `ADMIN_ROLE`
                     differences.append(
                         AMOperation(
-                            "update_target", self.ADMIN_ROLE, {"target": target, "selectors": selectors}
+                            "setTargetFunctionRole",
+                            {"target": target, "selectors": selectors, "roleId": self.ADMIN_ROLE.id},
                         )
                     )
                 else:
@@ -260,13 +285,15 @@ class AccessManagerEventStream(BaseEventStream):
                     if extra:
                         differences.append(
                             AMOperation(
-                                "update_target", self.ADMIN_ROLE, {"target": target, "selectors": extra}
+                                "setTargetFunctionRole",
+                                {"target": target, "selectors": extra, "roleId": self.ADMIN_ROLE.id},
                             )
                         )
                     if missing:
                         differences.append(
                             AMOperation(
-                                "update_target", current_role, {"target": target, "selectors": missing}
+                                "setTargetFunctionRole",
+                                {"target": target, "selectors": missing, "roleId": current_role.id},
                             )
                         )
 
