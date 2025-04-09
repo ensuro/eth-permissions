@@ -1,11 +1,11 @@
 import graphviz
 
-from .chaindata import EventStream
+from .chaindata import AccessControlEventStream
 from .utils import ExplorerAddress, ellipsize
 
 
-def build_graph(contract_type, contract_address):
-    stream = EventStream(contract_type, contract_address)
+def build_graph(contract_address):
+    stream = AccessControlEventStream(contract_address)
 
     dot = graphviz.Digraph("Permissions")
     dot.attr(rankdir="RL", splines="ortho")
@@ -24,7 +24,7 @@ def build_graph(contract_type, contract_address):
     for item in stream.snapshot:
         graphviz.quoting.quote(str(item["role"]))
         dot.node(item["role"].hash.hex(), str(item["role"]), tooltip=item["role"].hash.hex())
-        dot.edge(item["role"].hash.hex(), "CONTRACT")
+        # dot.edge(item["role"].hash.hex(), "CONTRACT")
 
         for member in item["members"]:
             dot.node(

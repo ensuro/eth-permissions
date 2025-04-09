@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from itertools import zip_longest
 
+from eth_utils import add_0x_prefix
 from hexbytes import HexBytes
 from web3 import Web3
-from eth_utils import add_0x_prefix
 
 from .utils import ellipsize
 
@@ -126,9 +126,7 @@ class Registry:
         # Try to match the last part of the hash
         hash_tail = hash.hex()[-24:]
         base_role = next(
-            (r for h, r in self._map.items()
-             if h.hex()[-24:] == hash_tail and r.component is None),
-            None
+            (r for h, r in self._map.items() if h.hex()[-24:] == hash_tail and r.component is None), None
         )
         if base_role:
             # It's a component role of an unknown component

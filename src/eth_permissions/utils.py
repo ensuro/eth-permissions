@@ -1,4 +1,6 @@
 import re
+from collections import defaultdict
+from datetime import timedelta
 
 
 def ellipsize(hexa):
@@ -18,3 +20,15 @@ class ExplorerAddress:
     @classmethod
     def get(cls, address):
         return cls.EXPLORER_URL_TEMPLATE.format(address=address)
+
+
+def safe_serializer(obj):
+    if hasattr(obj, "as_dict"):
+        return obj.as_dict()
+    if isinstance(obj, set):
+        return list(obj)
+    if isinstance(obj, defaultdict):
+        return {k: list(v) for k, v in obj.items()}
+    if isinstance(obj, timedelta):
+        return int(obj.total_seconds())
+    raise TypeError(f"Object of type {type(obj)} is not serializable")
