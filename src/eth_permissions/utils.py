@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from datetime import timedelta
 
 
 def ellipsize(hexa):
@@ -28,4 +29,6 @@ def safe_serializer(obj):
         return list(obj)
     if isinstance(obj, defaultdict):
         return {k: list(v) for k, v in obj.items()}
+    if isinstance(obj, timedelta):
+        return int(obj.total_seconds())
     raise TypeError(f"Object of type {type(obj)} is not serializable")

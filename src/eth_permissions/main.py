@@ -5,9 +5,10 @@ from itertools import zip_longest
 from environs import Env
 from hexbytes import HexBytes
 
-from eth_permissions.chaindata import AccessManagerEventStream, AMRole
+from eth_permissions import access_manager as am
+from eth_permissions.access_control import Component, Role, get_registry
+from eth_permissions.chaindata import AccessManagerEventStream
 from eth_permissions.graph import build_graph
-from eth_permissions.roles import Component, Role, get_registry
 from eth_permissions.utils import safe_serializer
 
 env = Env()
@@ -76,23 +77,21 @@ def main():
 
     if args.type == "AccessManager":
         event_stream = AccessManagerEventStream(args.address)
-        print(
-            "\n".join(
-                f"{e['event']} | " + " ".join(f"{k}={v}" for k, v in e["args"].items())
-                for e in event_stream.stream
-            )
-        )
+        # print(
+        #     "\n".join(
+        #         f"{e['event']} | " + " ".join(f"{k}={v}" for k, v in e["args"].items())
+        #         for e in event_stream.stream
+        #     )
+        # )
 
         if args.compare_snapshot:
             with open(args.compare_snapshot, "r") as f:
                 reference_snapshot = json.load(f)
-            snapshot = {int(id): AMRole.from_dict(role) for id, role in reference_snapshot.items()}
-            print("\nDIFF:")
+            snapshot = am.AccessManager.from_dict(reference_snapshot)
             comparison = event_stream.compare(snapshot)
             print(json.dumps(comparison, indent=2, default=safe_serializer))
         else:
-            print("\nSNAPSHOT:")
-            snapshot = event_stream.snapshot
+            snapshot = event_stream.snapshot_dict
             print(json.dumps(snapshot, indent=2, default=safe_serializer))
         return
 

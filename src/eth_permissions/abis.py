@@ -90,4 +90,33 @@ OZ_ACCESS_MANAGER = [
         "name": "TargetFunctionRoleUpdated",
         "type": "event",
     },
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "internalType": "uint64", "name": "roleId", "type": "uint64"},
+            {"indexed": False, "internalType": "uint32", "name": "delay", "type": "uint32"},
+            {"indexed": False, "internalType": "uint48", "name": "since", "type": "uint48"},
+        ],
+        "name": "RoleGrantDelayChanged",
+        "type": "event",
+    },
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "internalType": "address", "name": "target", "type": "address"},
+            {"indexed": False, "internalType": "bool", "name": "closed", "type": "bool"},
+        ],
+        "name": "TargetClosed",
+        "type": "event",
+    },
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "internalType": "address", "name": "target", "type": "address"},
+            {"indexed": False, "internalType": "uint32", "name": "delay", "type": "uint32"},
+            {"indexed": False, "internalType": "uint48", "name": "since", "type": "uint48"},
+        ],
+        "name": "TargetAdminDelayUpdated",
+        "type": "event",
+    },
 ]

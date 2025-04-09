@@ -4,8 +4,8 @@ import functions_framework
 from environs import Env
 from hexbytes import HexBytes
 
+from eth_permissions.access_control import Component, Role, get_registry
 from eth_permissions.graph import build_graph
-from eth_permissions.roles import Component, Role, get_registry
 
 env = Env()
 env.read_env()

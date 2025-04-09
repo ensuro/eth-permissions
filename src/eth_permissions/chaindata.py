@@ -1,14 +1,12 @@
 import itertools
 from collections import defaultdict
-from dataclasses import dataclass
-from typing import Literal
+from datetime import timedelta
 
-from eth_typing import ChecksumAddress, HexStr
-from eth_utils import add_0x_prefix, to_checksum_address
 from ethproto.wrappers import ETHWrapper, get_provider
 
 from . import abis
-from .roles import get_registry
+from . import access_manager as am
+from .access_control import get_registry
 
 
 class BaseEventStream:
@@ -79,78 +77,8 @@ class AccessControlEventStream(BaseEventStream):
         ]
 
 
-@dataclass
-class AMRole:
-    label: str
-    id: int = None
-    guardian: int = 0
-    admin: int = 0
-
-    # Address -> {selectors}
-    targets: dict[ChecksumAddress, set[HexStr]] = None
-
-    members: set[ChecksumAddress] = None
-
-    def __post_init__(self):
-        if self.targets is None:
-            self.targets = defaultdict(set)
-        if self.members is None:
-            self.members = set()
-
-    def __str__(self):
-        return f"{self.label} ({self.id})"
-
-    def as_dict(self):
-        return {
-            "label": self.label,
-            "id": self.id,
-            "guardian": self.guardian,
-            "admin": self.admin,
-            "members": list(self.members),
-            "targets": {k: list(v) for k, v in self.targets.items()},
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        return cls(
-            label=data["label"],
-            id=data["id"],
-            guardian=data["guardian"],
-            admin=data["admin"],
-            members=set(data["members"]),
-            targets={k: set(v) for k, v in data["targets"].items()},
-        )
-
-
-@dataclass
-class AMOperation:
-    # labelRole(uint64 roleId, string calldata label)
-    # grantRole(uint64 roleId, address account, uint32 executionDelay)
-    # revokeRole(uint64 roleId, address account)
-    # setRoleAdmin(uint64 roleId, uint64 admin)
-    # setRoleGuardian(uint64 roleId, uint64 guardian)
-    # setGrantDelay(uint64 roleId, uint32 newDelay)
-    # setTargetFunctionRole(address target, bytes4[] calldata selectors, uint64 roleId)
-    op: Literal[
-        "grantRole",
-        "revokeRole",
-        "setRoleGuardian",
-        "setRoleAdmin",
-        "labelRole",
-        "setTargetFunctionRole",
-        "setGrantDelay",
-    ]
-    args: dict
-
-    def as_dict(self):
-        return {"op": self.op, "args": self.args}
-
-
 class AccessManagerEventStream(BaseEventStream):
     ABI = abis.OZ_ACCESS_MANAGER
-
-    ADMIN_ROLE = AMRole("ADMIN_ROLE", id=0, guardian=0, admin=0)
-    PUBLIC_ROLE = AMRole("PUBLIC_ROLE", id=2**64 - 1, guardian=0, admin=0)
 
     def _load_stream(self):
         events = self._get_events(
@@ -161,6 +89,9 @@ class AccessManagerEventStream(BaseEventStream):
                 "RoleAdminChanged",
                 "RoleLabel",
                 "TargetFunctionRoleUpdated",
+                "RoleGrantDelayChanged",
+                "TargetClosed",
+                "TargetAdminDelayUpdated",
             ]
         )
 
@@ -175,50 +106,19 @@ class AccessManagerEventStream(BaseEventStream):
 
         self._event_stream = sorted(event_stream, key=lambda e: e["order"])
 
-    @classmethod
-    def initial_role_states(cls):
-        return {
-            cls.ADMIN_ROLE.id: cls.ADMIN_ROLE,
-            cls.PUBLIC_ROLE.id: cls.PUBLIC_ROLE,
-        }
-
     @property
-    def snapshot(self):
+    def snapshot(self) -> am.AccessManager:
         """Returns a snapshot of the current permissions setup.
 
-        The snapshot is a dict with role ids as keys and AMRole instances as values.
+        The snapshot is an instance of AccessManager with the current state of the permissions.
         """
-        snapshot = dict(self.initial_role_states())
-        for role_id, events in itertools.groupby(self.stream, key=lambda e: e["args"].roleId):
-            if role_id not in snapshot:
-                snapshot[role_id] = AMRole("", id=role_id)
-            for event in events:
-                if event["event"] == "RoleGranted":
-                    # RoleGranted(uint64 indexed roleId, address indexed account, uint32 delay, uint48 since, bool newMember);  # noqa
-                    # TODO: take delay and since into account
-                    snapshot[role_id].members.add(to_checksum_address(event["args"].account))
-                elif event["event"] == "RoleRevoked":
-                    # RoleRevoked(uint64 indexed roleId, address indexed account)
-                    snapshot[role_id].members.remove(to_checksum_address(event["args"].account))
-                elif event["event"] == "RoleGuardianChanged":
-                    # RoleGuardianChanged(uint64 indexed roleId, uint64 indexed guardian)
-                    snapshot[role_id].guardian = event["args"].guardian
-                elif event["event"] == "RoleAdminChanged":
-                    # RoleAdminChanged(uint64 indexed roleId, uint64 indexed admin)
-                    snapshot[role_id].admin = event["args"].admin
-                elif event["event"] == "RoleLabel":
-                    # RoleLabel(uint64 indexed roleId, string label)
-                    snapshot[role_id].label = event["args"].label
-                elif event["event"] == "TargetFunctionRoleUpdated":
-                    # TargetFunctionRoleUpdated(address indexed target, bytes4 selector, uint64 indexed roleId)  # noqa
-                    snapshot[role_id].targets[to_checksum_address(event["args"].target)].add(
-                        add_0x_prefix(HexStr(event["args"].selector.hex()))
-                    )
-                else:
-                    raise RuntimeError(f"Unexpected event {event.name} for role {role_id}")
-        return snapshot
+        return am.AccessManager.from_events(self.stream)
 
-    def compare(self, snapshot):
+    @property
+    def snapshot_dict(self) -> dict:
+        return self.snapshot.as_dict()
+
+    def compare(self, snapshot: am.AccessManager):
         """Compares the current snapshot with the given one. Returns the differences.
 
         snapshot must be a snapshot previously obtained from the snapshot property.
@@ -229,72 +129,176 @@ class AccessManagerEventStream(BaseEventStream):
         current = self.snapshot
         differences = []
 
-        for role_id, current_role in current.items():
-            snapshot_role = snapshot.get(
-                role_id,
-                AMRole(
-                    # Labels cannot be removed, but we'll consider an empty label for an extra role as a match
-                    label=(
-                        "" if role_id not in (self.ADMIN_ROLE.id, self.PUBLIC_ROLE.id) else current_role.label
-                    ),
-                    id=role_id,
-                    # By default every target function is restricted to the `ADMIN_ROLE`
-                    guardian=self.ADMIN_ROLE.id,
-                    admin=self.ADMIN_ROLE.id,
-                    members=set(),
-                    targets={},
-                ),
-            )
+        for role_id, current_role in current.roles.items():
+            snapshot_role = snapshot.roles.get(role_id, am.Role(id=role_id, label=""))
 
             if current_role.label != snapshot_role.label:
                 differences.append(
-                    AMOperation("labelRole", {"roleId": current_role.id, "label": snapshot_role.label})
+                    am.Operation("labelRole", {"roleId": current_role, "label": snapshot_role.label})
                 )
-            if current_role.admin != snapshot_role.admin:
+            if current.get_role_admin(current_role) != snapshot.get_role_admin(snapshot_role):
                 differences.append(
-                    AMOperation("setRoleAdmin", {"roleId": current_role.id, "admin": snapshot_role.admin})
-                )
-            if current_role.guardian != snapshot_role.guardian:
-                differences.append(
-                    AMOperation(
-                        "setRoleGuardian", {"roleId": current_role.id, "guardian": snapshot_role.guardian}
+                    am.Operation(
+                        "setRoleAdmin",
+                        {"roleId": current_role, "admin": snapshot.get_role_admin(snapshot_role)},
                     )
                 )
-            if current_role.members != snapshot_role.members:
-                for member in current_role.members - snapshot_role.members:
-                    differences.append(
-                        AMOperation("revokeRole", {"roleId": current_role.id, "account": member})
+            if current.get_role_guardian(current_role) != snapshot.get_role_guardian(snapshot_role):
+                differences.append(
+                    am.Operation(
+                        "setRoleGuardian",
+                        {"roleId": current_role, "guardian": snapshot.get_role_guardian(snapshot_role)},
                     )
-                for member in snapshot_role.members - current_role.members:
+                )
+            if current_role.grant_delay != snapshot_role.grant_delay:
+                differences.append(
+                    am.Operation(
+                        "setGrantDelay",
+                        {"roleId": current_role, "newDelay": snapshot_role.grant_delay},
+                    )
+                )
+
+            if current.get_role_members(current_role) != snapshot.get_role_members(snapshot_role):
+                for member in current.get_role_members(current_role) - snapshot.get_role_members(
+                    snapshot_role
+                ):
                     differences.append(
-                        AMOperation("grantRole", {"roleId": current_role.id, "account": member})
+                        am.Operation("revokeRole", {"roleId": current_role, "account": member.address})
                     )
 
-            for target, selectors in current_role.targets.items():
-                if target not in snapshot_role.targets:
-                    # By default every target function is restricted to the `ADMIN_ROLE`
+                for member in snapshot.get_role_members(snapshot_role) - current.get_role_members(
+                    current_role
+                ):
                     differences.append(
-                        AMOperation(
-                            "setTargetFunctionRole",
-                            {"target": target, "selectors": selectors, "roleId": self.ADMIN_ROLE.id},
+                        am.Operation(
+                            "grantRole",
+                            {
+                                "roleId": current_role,
+                                "account": member.address,
+                                "executionDelay": member.execution_delay,
+                            },
                         )
                     )
-                else:
-                    extra = selectors - snapshot_role.targets[target]
-                    missing = snapshot_role.targets[target] - selectors
-                    if extra:
-                        differences.append(
-                            AMOperation(
-                                "setTargetFunctionRole",
-                                {"target": target, "selectors": extra, "roleId": self.ADMIN_ROLE.id},
-                            )
+
+            # For common members just need to check the execution delay is properly set
+            for common_member in current.get_role_members(current_role) & snapshot.get_role_members(
+                snapshot_role
+            ):
+                # Can't get te members from iterating the intersection, because we need to distinguish them
+                current_member = [
+                    member for member in current.get_role_members(current_role) if member == common_member
+                ][0]
+                snapshot_member = [
+                    member for member in snapshot.get_role_members(snapshot_role) if member == common_member
+                ][0]
+                if current_member.execution_delay != snapshot_member.execution_delay:
+                    differences.append(
+                        am.Operation(
+                            "grantRole",
+                            {
+                                "roleId": current_role,
+                                "account": snapshot_member.address,
+                                "executionDelay": snapshot_member.execution_delay,
+                            },
                         )
-                    if missing:
-                        differences.append(
-                            AMOperation(
-                                "setTargetFunctionRole",
-                                {"target": target, "selectors": missing, "roleId": current_role.id},
-                            )
+                    )
+
+        snapshot_targets = set(snapshot.targets.values())
+        current_targets = set(current.targets.values())
+        if current_targets != snapshot_targets:
+            # The targets not present in the snapshot need to be reset to default values
+            for target in current_targets - snapshot_targets:
+                if target.closed:
+                    differences.append(am.Operation("setTargetClosed", {"target": target, "closed": False}))
+                if target.admin_delay != timedelta(0):
+                    differences.append(am.Operation("setTargetAdminDelay", {"target": target, "newDelay": 0}))
+
+            # The targets in snapshot but missing from current need to be properly configured
+            for target in snapshot_targets - current_targets:
+                if target.closed:
+                    differences.append(
+                        am.Operation("setTargetClosed", {"target": target, "closed": target.closed})
+                    )
+                if target.admin_delay != timedelta(0):
+                    differences.append(
+                        am.Operation(
+                            "setTargetAdminDelay", {"target": target, "newDelay": target.admin_delay}
                         )
+                    )
+
+            # The common targets need to be checked for matching config
+            for common_target in current_targets & snapshot_targets:
+                current_target = [target for target in current_targets if target == common_target][0]
+                snapshot_target = [target for target in snapshot_targets if target == common_target][0]
+                if current_target.closed != snapshot_target.closed:
+                    differences.append(
+                        am.Operation(
+                            "setTargetClosed", {"target": current_target, "closed": snapshot_target.closed}
+                        )
+                    )
+                if current_target.admin_delay != snapshot_target.admin_delay:
+                    differences.append(
+                        am.Operation(
+                            "setTargetAdminDelay",
+                            {"target": current_target, "newDelay": snapshot_target.admin_delay},
+                        )
+                    )
+
+        current_selectors = {
+            (target, selector_role.selector)
+            for target, selector_roles in current.target_allowed_roles.items()
+            for selector_role in selector_roles
+        }
+        snapshot_selectors = {
+            (target, selector_role.selector)
+            for target, selector_roles in snapshot.target_allowed_roles.items()
+            for selector_role in selector_roles
+        }
+
+        if current_selectors != snapshot_selectors:
+            # The target -> selectors not present in the snapshot need to be assigned to ADMIN_ROLE
+            for target, selector in current_selectors - snapshot_selectors:
+                differences.append(
+                    am.Operation(
+                        "setTargetFunctionRole",
+                        {
+                            "target": target,
+                            "selectors": {selector},
+                            "roleId": snapshot.ADMIN_ROLE,
+                        },
+                    )
+                )
+
+            # The target -> selectors in snapshot missing from current need to be set on current
+            for target, selector in snapshot_selectors - current_selectors:
+                role = snapshot.get_target_allowed_role(target, selector)
+                if role == snapshot.ADMIN_ROLE:
+                    continue
+                differences.append(
+                    am.Operation(
+                        "setTargetFunctionRole",
+                        {
+                            "target": target,
+                            "selectors": {selector},
+                            "roleId": role,
+                        },
+                    )
+                )
+
+        # The common target -> selectors need to be checked for matching role
+        for common_target, common_selector in current_selectors & snapshot_selectors:
+            current_role = current.get_target_allowed_role(common_target, common_selector)
+            snapshot_role = snapshot.get_target_allowed_role(common_target, common_selector)
+            if current_role != snapshot_role:
+                differences.append(
+                    am.Operation(
+                        "setTargetFunctionRole",
+                        {
+                            "target": common_target,
+                            "selectors": {common_selector},
+                            "roleId": snapshot_role,
+                        },
+                    )
+                )
 
         return differences
