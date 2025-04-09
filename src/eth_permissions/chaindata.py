@@ -39,7 +39,7 @@ class AccessControlEventStream(BaseEventStream):
     ABI = abis.OZ_ACCESS_CONTROL
 
     def _load_stream(self):
-        events = self._get_events(["RoleGranted", "RoleRevoked", "RoleAdminChanged"])
+        events = self._get_events(["RoleGranted", "RoleRevoked"])  # TODO: RoleAdminChanged
 
         event_stream = []
         for event in events:
