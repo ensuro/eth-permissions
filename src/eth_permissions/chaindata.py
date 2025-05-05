@@ -1,6 +1,7 @@
 import itertools
 from collections import defaultdict
 from datetime import timedelta
+from warnings import warn
 
 from ethproto.wrappers import ETHWrapper, get_provider
 
@@ -67,9 +68,7 @@ class AccessControlEventStream(BaseEventStream):
                         if not snapshot[role]:
                             snapshot.pop(role)
                     except KeyError:
-                        raise RuntimeError(
-                            f"WARNING: can't remove ungranted role {role} from {event['subject']}"
-                        )
+                        warn(f"WARNING: can't remove ungranted role {role} from {event['subject']}")
                 else:
                     raise RuntimeError(f"Unexpected event {event.name} for role {role}")
         return [
