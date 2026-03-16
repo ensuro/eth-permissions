@@ -161,6 +161,7 @@ class AccessManager:
                         am.get_target(to_checksum_address(event["args"].target)),
                         {add_0x_prefix(HexStr(event["args"].selector.hex()))},
                         Role(role_id),
+                        fix=True,
                     )
                 elif event["event"] == "RoleGrantDelayChanged":
                     # RoleGrantDelayChanged(uint64 indexed roleId, uint32 delay, uint48 since);
@@ -276,7 +277,7 @@ class AccessManager:
 
         self.role_guardians[role.id] = guardian
 
-    def set_target_function_role(self, target: Target, selectors: Set[HexStr], role: Role):
+    def set_target_function_role(self, target: Target, selectors: Set[HexStr], role: Role, fix: bool = False):
         if role.id not in self.roles:
             self.roles[role.id] = role
 
@@ -288,6 +289,25 @@ class AccessManager:
             selector_role = SelectorRole(role, selector)
             if selector_role not in self.target_allowed_roles.get(target.address, set()):
                 self.target_allowed_roles[target.address].add(selector_role)
+                # Finds other roles that have the same target/selector
+                other_roles = [
+                    sr
+                    for sr in self.target_allowed_roles[target.address]
+                    if sr.selector == selector and sr.role != role
+                ]
+                if not other_roles:
+                    continue
+                if fix:
+                    # When reading on-chain operations, just remove the old roles (override)
+                    for sr in other_roles:
+                        self.target_allowed_roles[target.address].remove(sr)
+                else:
+                    # When reading from the manifest, report the error, so we can't have the same method
+                    # delegated to two roles
+                    other_roles = [x.role for x in other_roles]
+                    raise RuntimeError(
+                        f"{target}->{selector} assigned to role {role} and also to other_roles: {other_roles}"
+                    )
 
     def set_target_closed(self, target: Target, closed: bool):
         if target.address not in self.targets:
