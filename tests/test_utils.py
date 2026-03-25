@@ -19,18 +19,19 @@ class MockWithAsDict:
         return {"foo": "bar"}
 
 def test_safe_serializer():
-    # hasattr(obj, "as_dict")
     assert safe_serializer(MockWithAsDict()) == {"foo": "bar"}
-    
-    # isinstance(obj, set)
-    assert safe_serializer({1, 2, 3}) == [1, 2, 3] or safe_serializer({1, 2, 3}) == [1, 3, 2] # Order might vary
-    res_set = safe_serializer({1, 2})
-    assert set(res_set) == {1, 2}
+
+    result = safe_serializer({1, 2, 3})
+    assert isinstance(result, list)
+    assert len(result) == 3
+    assert all(item in result for item in {1, 2, 3})
 
     # isinstance(obj, defaultdict)
-    dd = defaultdict(list)
-    dd["a"].append(1)
-    assert safe_serializer(dd) == {"a": [1]}
+    dd = defaultdict(set)
+    dd["role1"].add("member1")
+    dd["role1"].add("member2")
+    result = safe_serializer(dd)
+    assert result == {"role1": ["member1", "member2"]} or result == {"role1": ["member2", "member1"]}
 
     # isinstance(obj, timedelta)
     td = timedelta(hours=1, minutes=30)

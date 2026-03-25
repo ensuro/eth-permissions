@@ -56,6 +56,35 @@ def test_access_manager_misc_queries():
     assert am.get_role(1).id == 1
     assert am.get_role_guardian(role) == am.ADMIN_ROLE
     assert "0xabcdef12" in am.get_all_target_selectors(target)
-    
+
     role_targets = am.get_all_role_targets(role)
     assert target in role_targets
+
+
+def test_set_target_function_role_override_with_fix():
+    am = AccessManager()
+    target = Target(to_checksum_address("0x1111111111111111111111111111111111111111"))
+    role1 = Role(1)
+    role2 = Role(2)
+
+    am.set_target_function_role(target, {"0xabcdef12"}, role1)
+    assert "0xabcdef12" in am.get_all_target_selectors(target)
+
+    am.set_target_function_role(target, {"0xabcdef12"}, role2, fix=True)
+    selectors = am.get_all_target_selectors(target)
+    assert "0xabcdef12" in selectors
+    role_targets = am.get_all_role_targets(role2)
+    assert target in role_targets
+    role_targets_role1 = am.get_all_role_targets(role1)
+    assert target not in role_targets_role1
+
+
+def test_set_target_function_role_override_without_fix_raises():
+    am = AccessManager()
+    target = Target(to_checksum_address("0x1111111111111111111111111111111111111111"))
+    role1 = Role(1)
+    role2 = Role(2)
+
+    am.set_target_function_role(target, {"0xabcdef12"}, role1)
+    with pytest.raises(RuntimeError, match="assigned to role"):
+        am.set_target_function_role(target, {"0xabcdef12"}, role2, fix=False)

@@ -23,6 +23,14 @@ class ExplorerAddress:
 
 
 def safe_serializer(obj):
+    """Serialize objects for JSON encoding.
+
+    Converts non-JSON-serializable types to JSON-compatible representations:
+    - Objects with as_dict() method
+    - set -> list
+    - defaultdict -> dict with values converted to lists
+    - timedelta -> seconds as int
+    """
     if hasattr(obj, "as_dict"):
         return obj.as_dict()
     if isinstance(obj, set):
